@@ -62,10 +62,15 @@ async function apiGet(action, params = {}) {
     return (await fetch(url)).json();
 }
 async function apiPost(data) {
-    return (await fetch(GAS_URL, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+    const res = await fetch(GAS_URL, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ ...data, userId: currentUser.userId, book: currentBook })
-    })).json();
+    });
+    const text = await res.text();
+    try { return JSON.parse(text); }
+    catch (e) { console.error('GAS response:', text); throw new Error('เซิร์ฟเวอร์ตอบกลับผิดปกติ'); }
 }
 
 // ===== Books (NOVAT / VAT selector) =====
