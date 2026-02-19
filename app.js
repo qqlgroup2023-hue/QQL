@@ -1,7 +1,7 @@
 /**
  * app.js — LIFF App (Multi-Book: NOVAT/VAT + รายปี)
  */
-const LIFF_ID = '2009159364-Pm8RX1ed';
+const LIFF_ID = '2009159364-PTzZ6D0B';
 const GAS_URL = 'https://script.google.com/macros/s/AKfycby8qQzYDIcIfq9wWtX6Dgp7lKOc7hSze5AVSJYVABKaXtY8V8mB8J9w0oISjMkqhgSrFQ/exec';
 
 let currentUser = null, allBills = [], currentBillId = null, currentBillData = null;
