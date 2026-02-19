@@ -181,21 +181,8 @@ async function showBillDetail(billId, book) {
 
 // ===== Bill Image Viewer =====
 function renderBillImageBtn(billId) {
-    let btnContainer = document.getElementById('bill-image-btn-container');
-    if (!btnContainer) {
-        btnContainer = document.createElement('div');
-        btnContainer.id = 'bill-image-btn-container';
-        btnContainer.style.cssText = 'text-align:center;margin:12px 0';
-        const detailView = document.getElementById('bill-detail-view');
-        const submitBtn = document.getElementById('btn-submit-payment');
-        detailView.insertBefore(btnContainer, submitBtn);
-    }
-    btnContainer.innerHTML = `
-        <button onclick="loadBillImages('${billId}')" 
-          style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:15px;cursor:pointer;box-shadow:0 4px 15px rgba(102,126,234,0.4);width:100%">
-          📄 ดูใบส่งสินค้า
-        </button>
-    `;
+    const btn = document.getElementById('btn-view-bill');
+    if (btn) btn.onclick = () => loadBillImages(billId);
 }
 
 async function loadBillImages(billId) {

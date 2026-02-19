@@ -691,3 +691,25 @@ body {
     background: var(--danger);
     color: white;
 }
+
+/* ===== View Bill Images Button ===== */
+.btn-view-bill {
+    display: block;
+    width: calc(100% - 32px);
+    margin: 8px auto 0;
+    padding: 14px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.35);
+    font-family: inherit;
+}
+
+.btn-view-bill:active {
+    transform: scale(0.97);
+}
