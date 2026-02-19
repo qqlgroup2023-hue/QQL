@@ -16,6 +16,8 @@ async function initApp() {
         const p = await liff.getProfile();
         currentUser = { userId: p.userId, name: p.displayName };
         document.getElementById('user-name').textContent = p.displayName;
+        // แสดง User ID แบบ dismissible สำหรับ Admin copy
+        showUserIdBanner(p.userId, p.displayName);
     } catch (e) {
         currentUser = { userId: 'SALE_USER_ID_1', name: 'ทดสอบ' };
         document.getElementById('user-name').textContent = 'โหมดทดสอบ';
@@ -23,6 +25,26 @@ async function initApp() {
     await loadBooks();
     hideLoading();
 }
+
+function showUserIdBanner(uid, name) {
+    const banner = document.createElement('div');
+    banner.id = 'uid-banner';
+    banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1a1a2e;color:#fff;padding:12px 16px;font-size:12px;z-index:9999;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:2px solid #00B900;';
+    banner.innerHTML = `
+      <div style="flex:1;overflow:hidden">
+        <div style="font-weight:bold;color:#00B900;margin-bottom:2px">👤 ${name}</div>
+        <div style="font-family:monospace;font-size:11px;word-break:break-all;opacity:0.8">${uid}</div>
+      </div>
+      <button onclick="navigator.clipboard.writeText('${uid}').then(()=>showToast('คัดลอก User ID แล้ว!','success'))"
+        style="background:#00B900;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;white-space:nowrap">
+        📋 Copy ID
+      </button>
+      <button onclick="document.getElementById('uid-banner').remove()"
+        style="background:transparent;color:#aaa;border:none;font-size:18px;cursor:pointer;line-height:1">×</button>
+    `;
+    document.body.appendChild(banner);
+}
+
 
 function hideLoading() {
     const el = document.getElementById('loading-screen');
