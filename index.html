@@ -5,7 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ระบบตัดชำระ — LINE Payment</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
+    <!-- Preconnect เพื่อโหลดเร็วขึ้น -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://script.google.com">
+    <link rel="dns-prefetch" href="https://static.line-scdn.net">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -180,7 +185,7 @@
                         <p>แตะเพื่อเลือกรูป</p>
                         <img id="slip-preview" class="slip-preview" style="display:none">
                     </div>
-                    <input type="file" id="slip-file" accept="image/*" capture="environment" style="display:none"
+                    <input type="file" id="slip-file" accept="image/*" style="display:none"
                         onchange="previewSlip(this)">
                 </div>
 

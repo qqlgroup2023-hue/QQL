@@ -315,13 +315,30 @@ async function loadSenderSugg(customer) {
 
 let slipBase64 = '';
 function previewSlip(input) {
-    const f = input.files[0]; if (!f) return; const r = new FileReader();
+    const f = input.files[0]; if (!f) return;
+    const r = new FileReader();
     r.onload = e => {
-        const p = document.getElementById('slip-preview'); p.src = e.target.result; p.style.display = 'block';
-        document.querySelector('.upload-icon').style.display = 'none'; document.querySelector('.upload-area p').style.display = 'none';
-        slipBase64 = e.target.result.split(',')[1];
+        const img = new Image();
+        img.onload = () => {
+            // ย่อขนาดรูปก่อนอัปโหลด (max 1200px)
+            const MAX = 1200;
+            let w = img.width, h = img.height;
+            if (w > MAX || h > MAX) {
+                if (w > h) { h = h * MAX / w; w = MAX; }
+                else { w = w * MAX / h; h = MAX; }
+            }
+            const c = document.createElement('canvas');
+            c.width = w; c.height = h;
+            c.getContext('2d').drawImage(img, 0, 0, w, h);
+            const compressed = c.toDataURL('image/jpeg', 0.8);
+            const p = document.getElementById('slip-preview'); p.src = compressed; p.style.display = 'block';
+            document.querySelector('.upload-icon').style.display = 'none'; document.querySelector('.upload-area p').style.display = 'none';
+            slipBase64 = compressed.split(',')[1];
+        };
+        img.src = e.target.result;
     }; r.readAsDataURL(f);
 }
+
 
 async function handleSubmitPayment(event) {
     event.preventDefault(); const btn = document.getElementById('btn-do-submit');
