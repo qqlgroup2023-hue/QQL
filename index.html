@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ระบบตัดชำระ — LINE Payment</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- ===== Loading Screen ===== -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loader"></div>
+        <p>กำลังโหลด...</p>
+    </div>
+
+    <!-- ===== Header ===== -->
+    <header class="header">
+        <div class="header-content">
+            <h1 id="header-title">🧾 รายการบิล</h1>
+            <div id="user-info" class="user-info">
+                <span id="user-name"></span>
+                <span id="user-role" class="badge"></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===== Bill List View ===== -->
+    <main id="bill-list-view" class="view">
+        <!-- Book Tabs (NOVAT / VAT) -->
+        <div id="book-tabs" class="book-tabs" style="display:none"></div>
+
+        <!-- Filter Tabs -->
+        <div class="filter-tabs">
+            <button class="tab active" data-filter="all">ทั้งหมด</button>
+            <button class="tab" data-filter="pending">⏳ รอชำระ</button>
+            <button class="tab" data-filter="paid">✅ ชำระแล้ว</button>
+            <button class="tab" data-filter="rejected">❌ ไม่ผ่าน</button>
+        </div>
+
+        <!-- Bill Cards -->
+        <div id="bill-list" class="bill-list">
+            <!-- Bills will be inserted here by JS -->
+        </div>
+
+        <div id="empty-state" class="empty-state" style="display:none">
+            <div class="empty-icon">📋</div>
+            <p>ไม่มีบิลในหมวดนี้</p>
+        </div>
+    </main>
+
+    <!-- ===== Bill Detail View ===== -->
+    <div id="bill-detail-view" class="view" style="display:none">
+        <button class="back-btn" onclick="showBillList()">← กลับ</button>
+
+        <div class="bill-card detail-card">
+            <div class="bill-header-detail">
+                <h2 id="detail-bill-id"></h2>
+                <span id="detail-status" class="status-badge"></span>
+            </div>
+            <div class="detail-row">
+                <span class="label">ลูกค้า</span>
+                <span id="detail-customer" class="value"></span>
+            </div>
+            <div class="detail-row">
+                <span class="label">Sale</span>
+                <span id="detail-sale" class="value"></span>
+            </div>
+            <div class="detail-row">
+                <span class="label">วันที่</span>
+                <span id="detail-date" class="value"></span>
+            </div>
+        </div>
+
+        <!-- Items Table -->
+        <div class="section-title">📦 รายการสินค้า</div>
+        <div class="items-table-wrap">
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>สินค้า</th>
+                        <th>จำนวน</th>
+                        <th>ราคา</th>
+                        <th>รวม</th>
+                    </tr>
+                </thead>
+                <tbody id="items-tbody"></tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3"><strong>ยอดรวม</strong></td>
+                        <td><strong id="detail-total"></strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Payment History -->
+        <div class="section-title">💳 ประวัติการชำระ</div>
+        <div id="payment-history" class="payment-history">
+            <p class="no-payments">ยังไม่มีการชำระ</p>
+        </div>
+
+        <!-- Submit Payment Button -->
+        <button id="btn-submit-payment" class="btn-primary" onclick="showPaymentForm()">
+            📎 แนบหลักฐานชำระ
+        </button>
+    </div>
+
+    <!-- ===== Payment Form Modal ===== -->
+    <div id="payment-modal" class="modal" style="display:none">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>💰 แนบหลักฐานชำระ</h3>
+                <button class="close-btn" onclick="closePaymentForm()">✕</button>
+            </div>
+
+            <form id="payment-form" onsubmit="handleSubmitPayment(event)">
+                <div class="form-group">
+                    <label>ประเภทการชำระ</label>
+                    <div class="radio-group">
+                        <label class="radio-card">
+                            <input type="radio" name="paymentType" value="โอนเงิน" checked>
+                            <span class="radio-label">🏦 โอนเงิน</span>
+                        </label>
+                        <label class="radio-card">
+                            <input type="radio" name="paymentType" value="ฝากตู้ CDM">
+                            <span class="radio-label">🏧 ฝากตู้</span>
+                        </label>
+                        <label class="radio-card">
+                            <input type="radio" name="paymentType" value="เช็ค">
+                            <span class="radio-label">📝 เช็ค</span>
+                        </label>
+                        <label class="radio-card">
+                            <input type="radio" name="paymentType" value="เงินสด">
+                            <span class="radio-label">💵 เงินสด</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Cheque Fields (hidden by default) -->
+                <div id="cheque-fields" style="display:none">
+                    <div class="form-group">
+                        <label>ธนาคาร</label>
+                        <input type="text" id="cheque-bank" placeholder="ชื่อธนาคาร">
+                    </div>
+                    <div class="form-group">
+                        <label>เลขที่เช็ค</label>
+                        <input type="text" id="cheque-no" placeholder="เลขที่เช็ค">
+                    </div>
+                    <div class="form-group">
+                        <label>วันที่บนเช็ค</label>
+                        <input type="date" id="cheque-date">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>ชื่อผู้โอน / ผู้ฝาก</label>
+                    <input type="text" id="sender-name" placeholder="ชื่อคนที่โอนเงิน" required>
+                    <div id="sender-suggestions" class="suggestions" style="display:none"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>จำนวนเงิน (฿)</label>
+                    <input type="number" id="pay-amount" placeholder="0.00" step="0.01" required>
+                </div>
+
+                <div class="form-group">
+                    <label>📷 แนบรูปสลิป / หลักฐาน</label>
+                    <div class="upload-area" id="upload-area" onclick="document.getElementById('slip-file').click()">
+                        <div class="upload-icon">📸</div>
+                        <p>แตะเพื่อเลือกรูป</p>
+                        <img id="slip-preview" class="slip-preview" style="display:none">
+                    </div>
+                    <input type="file" id="slip-file" accept="image/*" capture="environment" style="display:none"
+                        onchange="previewSlip(this)">
+                </div>
+
+                <div class="form-group">
+                    <label>📝 หมายเหตุ</label>
+                    <textarea id="pay-note" placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)" rows="3"></textarea>
+                </div>
+
+                <button type="submit" class="btn-primary btn-submit" id="btn-do-submit">
+                    ✅ ส่งหลักฐาน
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== Success / Error Toast ===== -->
+    <div id="toast" class="toast" style="display:none">
+        <span id="toast-message"></span>
+    </div>
+
+    <!-- ===== Admin Panel (only visible for Admin) ===== -->
+    <div id="admin-panel" class="admin-panel" style="display:none">
+        <div class="section-title">🛡️ Admin Actions</div>
+        <div id="admin-actions" class="admin-actions"></div>
+    </div>
+
+    <!-- LIFF SDK -->
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>

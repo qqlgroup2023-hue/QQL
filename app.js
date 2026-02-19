@@ -1,0 +1,275 @@
+/**
+ * app.js — LIFF App (Multi-Book: NOVAT/VAT + รายปี)
+ */
+const LIFF_ID = '2009159364-Pm8RX1ed';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycby8qQzYDIcIfq9wWtX6Dgp7lKOc7hSze5AVSJYVABKaXtY8V8mB8J9w0oISjMkqhgSrFQ/exec';
+
+let currentUser = null, allBills = [], currentBillId = null, currentBillData = null;
+let isAdmin = false, currentFilter = 'all', currentBook = '', availableBooks = [];
+
+document.addEventListener('DOMContentLoaded', initApp);
+
+async function initApp() {
+    try {
+        await liff.init({ liffId: LIFF_ID });
+        if (!liff.isLoggedIn()) { liff.login(); return; }
+        const p = await liff.getProfile();
+        currentUser = { userId: p.userId, name: p.displayName };
+        document.getElementById('user-name').textContent = p.displayName;
+    } catch (e) {
+        currentUser = { userId: 'SALE_USER_ID_1', name: 'ทดสอบ' };
+        document.getElementById('user-name').textContent = 'โหมดทดสอบ';
+    }
+    await loadBooks();
+    hideLoading();
+}
+
+function hideLoading() {
+    const el = document.getElementById('loading-screen');
+    el.classList.add('fade-out');
+    setTimeout(() => el.style.display = 'none', 300);
+}
+
+// ===== API =====
+async function apiGet(action, params = {}) {
+    const url = new URL(GAS_URL);
+    url.searchParams.set('action', action);
+    url.searchParams.set('userId', currentUser.userId);
+    for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+    return (await fetch(url)).json();
+}
+async function apiPost(data) {
+    return (await fetch(GAS_URL, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, userId: currentUser.userId, book: currentBook })
+    })).json();
+}
+
+// ===== Books (NOVAT / VAT selector) =====
+async function loadBooks() {
+    try {
+        const r = await apiGet('getBooks');
+        if (r.success) {
+            availableBooks = r.books;
+            renderBookTabs();
+            if (availableBooks.length > 0) {
+                currentBook = availableBooks[0].name;
+                await loadBills();
+            }
+        }
+    } catch (e) { showToast('โหลด Books ไม่ได้', 'error'); }
+}
+
+function renderBookTabs() {
+    const container = document.getElementById('book-tabs');
+    if (!container || availableBooks.length <= 1) return;
+    container.innerHTML = '';
+    container.style.display = 'flex';
+    availableBooks.forEach((b, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'book-tab' + (i === 0 ? ' active' : '');
+        btn.textContent = (b.type === 'VAT' ? '📘' : '📗') + ' ' + b.name;
+        btn.onclick = () => {
+            document.querySelectorAll('.book-tab').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            currentBook = b.name;
+            loadBills();
+        };
+        container.appendChild(btn);
+    });
+}
+
+// ===== Bills =====
+async function loadBills() {
+    try {
+        const r = await apiGet('getBills', { book: currentBook });
+        if (r.success) {
+            allBills = r.bills; isAdmin = r.isAdmin;
+            document.getElementById('user-role').textContent = isAdmin ? 'Admin' : 'Sale';
+            renderBills();
+        } else showToast(r.error, 'error');
+    } catch (e) { showToast('เชื่อมต่อไม่ได้', 'error'); }
+}
+
+function renderBills() {
+    const c = document.getElementById('bill-list'), empty = document.getElementById('empty-state');
+    c.innerHTML = '';
+    const filtered = allBills.filter(b => {
+        const s = (b.Status || '').toString();
+        if (currentFilter === 'all') return true;
+        if (currentFilter === 'pending') return s.includes('รอ');
+        if (currentFilter === 'paid') return s.includes('ชำระแล้ว');
+        if (currentFilter === 'rejected') return s.includes('ไม่ผ่าน') || s.includes('คืน');
+        return true;
+    });
+    if (!filtered.length) { empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    filtered.forEach(bill => {
+        const s = (bill.Status || '').toString();
+        const sc = s.includes('ชำระแล้ว') ? 'status-paid' : s.includes('ไม่ผ่าน') || s.includes('คืน') ? 'status-rejected' : 'status-pending';
+        const cc = s.includes('ชำระแล้ว') ? 'paid' : s.includes('ไม่ผ่าน') ? 'rejected' : 'pending';
+        const dt = bill.Created_Date ? new Date(bill.Created_Date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+        const d = document.createElement('div');
+        d.className = 'bill-card ' + cc;
+        d.onclick = () => showBillDetail(bill.Bill_ID, bill._book || currentBook);
+        d.innerHTML = `<div class="bill-card-top"><span class="bill-id">${bill.Bill_ID}</span><span class="status-badge ${sc}">${bill.Status}</span></div>
+      <div class="bill-card-body"><div><div class="bill-customer">🏪 ${bill.Customer}</div><div class="bill-date">${dt}</div></div>
+      <div class="bill-amount">฿${fmt(bill.Total_Amount)}</div></div>`;
+        c.appendChild(d);
+    });
+}
+
+// ===== Filter =====
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active'); currentFilter = t.dataset.filter; renderBills();
+}));
+
+// ===== Detail =====
+async function showBillDetail(billId, book) {
+    currentBillId = billId; if (book) currentBook = book;
+    document.getElementById('bill-list-view').style.display = 'none';
+    document.getElementById('bill-detail-view').style.display = 'block';
+    document.getElementById('header-title').textContent = '🧾 รายละเอียดบิล';
+    try {
+        const r = await apiGet('getBillDetail', { billId, book: currentBook });
+        if (!r.success) { showToast(r.error, 'error'); return; }
+        currentBillData = r.bill;
+        document.getElementById('detail-bill-id').textContent = r.bill.Bill_ID;
+        document.getElementById('detail-customer').textContent = r.bill.Customer;
+        document.getElementById('detail-sale').textContent = r.bill.Sale_Name || '';
+        document.getElementById('detail-date').textContent = r.bill.Created_Date ? new Date(r.bill.Created_Date).toLocaleDateString('th-TH') : '';
+        const st = (r.bill.Status || '').toString(), se = document.getElementById('detail-status');
+        se.textContent = st; se.className = 'status-badge ' + (st.includes('ชำระแล้ว') ? 'status-paid' : st.includes('ไม่ผ่าน') ? 'status-rejected' : 'status-pending');
+        const tb = document.getElementById('items-tbody'); tb.innerHTML = '';
+        let items = r.bill.Items || []; if (typeof items === 'string') try { items = JSON.parse(items); } catch (e) { items = []; }
+        items.forEach(it => {
+            const tr = document.createElement('tr'); const sub = (it.qty || 0) * (it.price || 0);
+            tr.innerHTML = `<td>${it.name}</td><td>${it.qty}</td><td>฿${fmt(it.price)}</td><td>฿${fmt(sub)}</td>`; tb.appendChild(tr);
+        });
+        document.getElementById('detail-total').textContent = '฿' + fmt(r.bill.Total_Amount);
+        renderPayHist(r.payments);
+        document.getElementById('btn-submit-payment').style.display = st.includes('ชำระแล้ว') ? 'none' : 'block';
+        renderAdminPanel(r.payments);
+    } catch (e) { showToast('โหลดไม่ได้', 'error'); }
+}
+
+function renderPayHist(payments) {
+    const c = document.getElementById('payment-history');
+    if (!payments?.length) { c.innerHTML = '<p class="no-payments">ยังไม่มีการชำระ</p>'; return; }
+    c.innerHTML = ''; payments.forEach(p => {
+        const d = document.createElement('div'); d.className = 'payment-item';
+        d.innerHTML = `<div class="payment-item-top"><span class="payment-type">${p.Payment_Type} | ฿${fmt(p.Amount)}</span>
+      <span class="status-badge ${psc(p.Status)}">${p.Status}</span></div>
+      <div style="font-size:12px;color:var(--text-sub)">ผู้โอน: ${p.Sender_Name || '-'} | ${p.Timestamp ? new Date(p.Timestamp).toLocaleString('th-TH') : ''}</div>
+      ${p.Note ? '<div style="font-size:12px;margin-top:4px">📝 ' + p.Note + '</div>' : ''}
+      ${p.Warning ? '<div class="payment-warning">' + p.Warning + '</div>' : ''}
+      ${p.Slip_URL ? '<a href="' + p.Slip_URL + '" target="_blank" style="font-size:12px;color:var(--info)">📎 ดูสลิป</a>' : ''}`;
+        c.appendChild(d);
+    });
+}
+
+function renderAdminPanel(payments) {
+    const panel = document.getElementById('admin-panel'), actions = document.getElementById('admin-actions');
+    if (!isAdmin) { panel.style.display = 'none'; return; }
+    const pending = (payments || []).filter(p => p.Status?.toString().includes('รอตรวจ'));
+    if (!pending.length) { panel.style.display = 'none'; return; }
+    panel.style.display = 'block'; actions.innerHTML = '';
+    pending.forEach(p => {
+        const d = document.createElement('div'); d.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px;width:100%';
+        d.innerHTML = `<span style="flex:1;font-size:13px">${p.Payment_ID} | ฿${fmt(p.Amount)}</span>
+      <button class="btn-approve" onclick="doApprove('${p.Payment_ID}')">✅</button>
+      <button class="btn-reject" onclick="doReject('${p.Payment_ID}')">❌</button>`;
+        actions.appendChild(d);
+    });
+}
+
+function psc(s) { if (!s) return 'status-pending'; s = s.toString(); return s.includes('ผ่าน') && !s.includes('ไม่') ? 'status-paid' : s.includes('ไม่ผ่าน') ? 'status-rejected' : s.includes('ชื่อไม่ตรง') ? 'status-warning' : 'status-pending'; }
+function showBillList() {
+    document.getElementById('bill-list-view').style.display = 'block'; document.getElementById('bill-detail-view').style.display = 'none';
+    document.getElementById('admin-panel').style.display = 'none'; document.getElementById('header-title').textContent = '🧾 รายการบิล'; loadBills();
+}
+
+// ===== Payment Form =====
+function showPaymentForm() {
+    document.getElementById('payment-modal').style.display = 'flex';
+    document.getElementById('pay-amount').value = currentBillData ? currentBillData.Total_Amount : '';
+    if (currentBillData?.Customer) loadSenderSugg(currentBillData.Customer);
+    document.querySelectorAll('input[name="paymentType"]').forEach(r => r.addEventListener('change', () => {
+        document.getElementById('cheque-fields').style.display = r.value === 'เช็ค' ? 'block' : 'none';
+    }));
+}
+function closePaymentForm() {
+    document.getElementById('payment-modal').style.display = 'none';
+    document.getElementById('payment-form').reset(); document.getElementById('slip-preview').style.display = 'none';
+    document.getElementById('sender-suggestions').style.display = 'none';
+}
+
+async function loadSenderSugg(customer) {
+    try {
+        const r = await apiGet('getShopSenders', { customer });
+        if (r.success && r.senders.length) {
+            const c = document.getElementById('sender-suggestions');
+            c.innerHTML = '<div style="padding:8px 14px;font-size:11px;color:var(--text-sub);font-weight:600">ผู้โอนที่เคยใช้:</div>';
+            r.senders.forEach(s => {
+                const d = document.createElement('div'); d.className = 'suggestion-item'; d.textContent = s.name;
+                d.onclick = () => { document.getElementById('sender-name').value = s.name; c.style.display = 'none'; }; c.appendChild(d);
+            });
+            c.style.display = 'block';
+        }
+    } catch (e) { }
+}
+
+let slipBase64 = '';
+function previewSlip(input) {
+    const f = input.files[0]; if (!f) return; const r = new FileReader();
+    r.onload = e => {
+        const p = document.getElementById('slip-preview'); p.src = e.target.result; p.style.display = 'block';
+        document.querySelector('.upload-icon').style.display = 'none'; document.querySelector('.upload-area p').style.display = 'none';
+        slipBase64 = e.target.result.split(',')[1];
+    }; r.readAsDataURL(f);
+}
+
+async function handleSubmitPayment(event) {
+    event.preventDefault(); const btn = document.getElementById('btn-do-submit');
+    btn.disabled = true; btn.textContent = '⏳ กำลังส่ง...';
+    try {
+        const pt = document.querySelector('input[name="paymentType"]:checked').value;
+        const payload = {
+            action: 'submitPayment', billId: currentBillId, paymentType: pt,
+            senderName: document.getElementById('sender-name').value,
+            amount: parseFloat(document.getElementById('pay-amount').value),
+            note: document.getElementById('pay-note').value, slipImageBase64: slipBase64 || ''
+        };
+        if (pt === 'เช็ค') payload.chequeData = {
+            bank: document.getElementById('cheque-bank').value,
+            chequeNo: document.getElementById('cheque-no').value, chequeDate: document.getElementById('cheque-date').value, amount: payload.amount
+        };
+        const r = await apiPost(payload);
+        if (r.success) {
+            closePaymentForm(); showToast(r.message, r.warning ? 'warning' : 'success');
+            if (liff.isInClient()) liff.sendMessages([{ type: 'text', text: '✅ ส่งสลิป บิล:' + currentBillId + ' ฿' + fmt(payload.amount) }]).catch(() => { });
+            showBillDetail(currentBillId);
+        }
+        else showToast(r.error, 'error');
+    } catch (e) { showToast('เกิดข้อผิดพลาด', 'error'); }
+    finally { btn.disabled = false; btn.textContent = '✅ ส่งหลักฐาน'; slipBase64 = ''; }
+}
+
+// ===== Admin =====
+async function doApprove(pid) {
+    if (!confirm('อนุมัติ?')) return; const r = await apiPost({ action: 'approvePayment', paymentId: pid });
+    showToast(r.message || r.error, r.success ? 'success' : 'error'); if (r.success) showBillDetail(currentBillId);
+}
+async function doReject(pid) {
+    const reason = prompt('เหตุผล:'); if (reason === null) return;
+    const r = await apiPost({ action: 'rejectPayment', paymentId: pid, reason });
+    showToast(r.message || r.error, r.success ? 'success' : 'error'); if (r.success) showBillDetail(currentBillId);
+}
+
+// ===== Toast & Utils =====
+function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast'), m = document.getElementById('toast-message');
+    t.className = 'toast ' + type; m.textContent = msg; t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 4000);
+}
+function fmt(n) { return n == null ? '0' : Number(n).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }

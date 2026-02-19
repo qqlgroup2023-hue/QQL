@@ -1,0 +1,693 @@
+/* ========================================
+ *  style.css — LIFF App Styling
+ *  ระบบตัดชำระเชื่อม LINE
+ * ======================================== */
+
+:root {
+    --primary: #06C755;
+    --primary-dark: #05a648;
+    --primary-light: #e8f8ef;
+    --danger: #E74C3C;
+    --warning: #F39C12;
+    --info: #3498DB;
+    --bg: #f0f2f5;
+    --card-bg: #ffffff;
+    --text: #1a1a2e;
+    --text-sub: #6c757d;
+    --border: #e9ecef;
+    --shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    --radius: 14px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Noto Sans Thai', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 80px;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ===== Loading ===== */
+.loading-screen {
+    position: fixed;
+    inset: 0;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    gap: 16px;
+    transition: opacity 0.3s;
+}
+
+.loading-screen.fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loader {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ===== Header ===== */
+.header {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    padding: 16px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 20px rgba(6, 199, 85, 0.3);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header h1 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.badge {
+    background: rgba(255, 255, 255, 0.25);
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+/* ===== Book Tabs (NOVAT / VAT) ===== */
+.book-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px 0;
+}
+
+.book-tab {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid var(--border);
+    background: var(--card-bg);
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.book-tab.active {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary-dark);
+}
+
+/* ===== Filter Tabs ===== */
+.filter-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.tab {
+    padding: 8px 18px;
+    border: none;
+    background: var(--card-bg);
+    border-radius: 24px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-sub);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    font-family: inherit;
+}
+
+.tab.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(6, 199, 85, 0.3);
+}
+
+/* ===== Bill Cards ===== */
+.bill-list {
+    padding: 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.bill-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    border-left: 4px solid var(--primary);
+}
+
+.bill-card:active {
+    transform: scale(0.98);
+}
+
+.bill-card.paid {
+    border-left-color: var(--primary);
+}
+
+.bill-card.pending {
+    border-left-color: var(--warning);
+}
+
+.bill-card.rejected {
+    border-left-color: var(--danger);
+}
+
+.bill-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.bill-id {
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text);
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.status-pending {
+    background: #FFF3CD;
+    color: #856404;
+}
+
+.status-paid {
+    background: #D4EDDA;
+    color: #155724;
+}
+
+.status-rejected {
+    background: #F8D7DA;
+    color: #721C24;
+}
+
+.status-warning {
+    background: #FFE8CC;
+    color: #8A4B00;
+}
+
+.bill-card-body {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.bill-customer {
+    font-size: 14px;
+    color: var(--text-sub);
+}
+
+.bill-amount {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary-dark);
+}
+
+.bill-date {
+    font-size: 11px;
+    color: var(--text-sub);
+    margin-top: 6px;
+}
+
+/* ===== Detail View ===== */
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 16px;
+    margin: 12px 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--text);
+    font-family: inherit;
+}
+
+.detail-card {
+    margin: 0 16px;
+    cursor: default;
+    border-left: 4px solid var(--primary);
+}
+
+.bill-header-detail {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.bill-header-detail h2 {
+    font-size: 18px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.label {
+    color: var(--text-sub);
+    font-size: 13px;
+}
+
+.value {
+    font-weight: 500;
+    font-size: 14px;
+}
+
+/* ===== Items Table ===== */
+.section-title {
+    font-size: 15px;
+    font-weight: 600;
+    padding: 16px 16px 8px;
+}
+
+.items-table-wrap {
+    padding: 0 16px;
+    overflow-x: auto;
+}
+
+.items-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    font-size: 13px;
+}
+
+.items-table th {
+    background: #f8f9fa;
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-sub);
+}
+
+.items-table td {
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+}
+
+.items-table tfoot td {
+    font-size: 15px;
+    background: var(--primary-light);
+}
+
+/* ===== Payment History ===== */
+.payment-history {
+    padding: 0 16px;
+}
+
+.payment-item {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+    font-size: 13px;
+}
+
+.payment-item-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.payment-type {
+    font-weight: 600;
+}
+
+.payment-warning {
+    color: var(--warning);
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.no-payments {
+    text-align: center;
+    color: var(--text-sub);
+    padding: 20px;
+    font-size: 14px;
+}
+
+/* ===== Buttons ===== */
+.btn-primary {
+    display: block;
+    width: calc(100% - 32px);
+    margin: 16px auto;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 4px 16px rgba(6, 199, 85, 0.3);
+    font-family: inherit;
+}
+
+.btn-primary:active {
+    transform: scale(0.97);
+}
+
+.btn-primary:disabled {
+    background: #ccc;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+/* ===== Modal ===== */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    animation: fadeIn 0.2s;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.modal-content {
+    background: var(--card-bg);
+    width: 100%;
+    max-height: 90vh;
+    border-radius: 20px 20px 0 0;
+    padding: 20px;
+    overflow-y: auto;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+    }
+
+    to {
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-header h3 {
+    font-size: 17px;
+}
+
+.close-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: var(--bg);
+    border-radius: 50%;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ===== Form ===== */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text);
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: inherit;
+    background: var(--card-bg);
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    border-color: var(--primary);
+}
+
+.radio-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.radio-card {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: var(--bg);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+}
+
+.radio-card:has(input:checked) {
+    background: var(--primary-light);
+    border-color: var(--primary);
+}
+
+.radio-card input {
+    display: none;
+}
+
+.radio-label {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* ===== Upload Area ===== */
+.upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.upload-area:active {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.upload-icon {
+    font-size: 36px;
+    margin-bottom: 8px;
+}
+
+.upload-area p {
+    color: var(--text-sub);
+    font-size: 13px;
+}
+
+.slip-preview {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 8px;
+    margin-top: 12px;
+    object-fit: contain;
+}
+
+/* ===== Suggestions ===== */
+.suggestions {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-top: 4px;
+    max-height: 120px;
+    overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.suggestion-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item:active {
+    background: var(--primary-light);
+}
+
+/* ===== Toast ===== */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 999;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    animation: toastIn 0.3s;
+}
+
+.toast.success {
+    background: var(--primary);
+    color: white;
+}
+
+.toast.error {
+    background: var(--danger);
+    color: white;
+}
+
+.toast.warning {
+    background: var(--warning);
+    color: white;
+}
+
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+/* ===== Empty State ===== */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-sub);
+}
+
+.empty-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+
+/* ===== Admin Panel ===== */
+.admin-panel {
+    padding: 0 16px 20px;
+}
+
+.admin-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-approve,
+.btn-reject {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.btn-approve {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-reject {
+    background: var(--danger);
+    color: white;
+}
