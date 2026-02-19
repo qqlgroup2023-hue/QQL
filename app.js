@@ -382,7 +382,6 @@ async function handleSubmitPayment(event) {
             senderName: document.getElementById('sender-name').value,
             amount: parseFloat(document.getElementById('pay-amount').value),
             note: document.getElementById('pay-note').value,
-            slipImages: slipBase64List.length > 0 ? slipBase64List : (slipBase64List.length === 0 ? [] : []),
             slipImageBase64: slipBase64List[0] || ''
         };
         if (pt === 'เช็ค') payload.chequeData = {
@@ -391,6 +390,14 @@ async function handleSubmitPayment(event) {
         };
         const r = await apiPost(payload);
         if (r.success) {
+            // อัปโหลดรูปที่เหลือทีละรูป
+            if (slipBase64List.length > 1 && r.paymentId) {
+                btn.textContent = '⏳ อัปโหลดรูปเพิ่ม...';
+                for (let i = 1; i < slipBase64List.length; i++) {
+                    btn.textContent = '⏳ อัปโหลดรูป ' + (i + 1) + '/' + slipBase64List.length;
+                    await apiPost({ action: 'addSlipImage', paymentId: r.paymentId, billId: currentBillId, slipImageBase64: slipBase64List[i] });
+                }
+            }
             closePaymentForm(); showToast(r.message, r.warning ? 'warning' : 'success');
             if (liff.isInClient()) liff.sendMessages([{ type: 'text', text: '✅ ส่งสลิป บิล:' + currentBillId + ' ฿' + fmt(payload.amount) }]).catch(() => { });
             showBillDetail(currentBillId);
@@ -402,8 +409,10 @@ async function handleSubmitPayment(event) {
         slipBase64List = [];
         const container = document.getElementById('slip-preview-container');
         if (container) container.innerHTML = '';
-        document.querySelector('.upload-icon').style.display = '';
-        document.querySelector('.upload-area p').style.display = '';
+        const icon = document.querySelector('.upload-icon');
+        if (icon) icon.style.display = '';
+        const txt = document.querySelector('.upload-area p');
+        if (txt) txt.style.display = '';
     }
 }
 
