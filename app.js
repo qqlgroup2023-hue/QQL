@@ -313,32 +313,57 @@ async function loadSenderSugg(customer) {
     } catch (e) { }
 }
 
-let slipBase64 = '';
-function previewSlip(input) {
-    const f = input.files[0]; if (!f) return;
-    const r = new FileReader();
-    r.onload = e => {
-        const img = new Image();
-        img.onload = () => {
-            // ย่อขนาดรูปก่อนอัปโหลด (max 1200px)
-            const MAX = 1200;
-            let w = img.width, h = img.height;
-            if (w > MAX || h > MAX) {
-                if (w > h) { h = h * MAX / w; w = MAX; }
-                else { w = w * MAX / h; h = MAX; }
-            }
-            const c = document.createElement('canvas');
-            c.width = w; c.height = h;
-            c.getContext('2d').drawImage(img, 0, 0, w, h);
-            const compressed = c.toDataURL('image/jpeg', 0.8);
-            const p = document.getElementById('slip-preview'); p.src = compressed; p.style.display = 'block';
-            document.querySelector('.upload-icon').style.display = 'none'; document.querySelector('.upload-area p').style.display = 'none';
-            slipBase64 = compressed.split(',')[1];
-        };
-        img.src = e.target.result;
-    }; r.readAsDataURL(f);
+let slipBase64List = [];
+
+function compressImage(file) {
+    return new Promise(resolve => {
+        const r = new FileReader();
+        r.onload = e => {
+            const img = new Image();
+            img.onload = () => {
+                const MAX = 1200;
+                let w = img.width, h = img.height;
+                if (w > MAX || h > MAX) {
+                    if (w > h) { h = h * MAX / w; w = MAX; }
+                    else { w = w * MAX / h; h = MAX; }
+                }
+                const c = document.createElement('canvas');
+                c.width = w; c.height = h;
+                c.getContext('2d').drawImage(img, 0, 0, w, h);
+                resolve(c.toDataURL('image/jpeg', 0.8).split(',')[1]);
+            };
+            img.src = e.target.result;
+        }; r.readAsDataURL(file);
+    });
 }
 
+async function previewSlips(input) {
+    const files = Array.from(input.files); if (!files.length) return;
+    document.querySelector('.upload-icon').style.display = 'none';
+    document.querySelector('.upload-area p').style.display = 'none';
+    const container = document.getElementById('slip-preview-container');
+    container.innerHTML = '<p style="color:#666;font-size:13px">⏳ กำลังประมวลผล ' + files.length + ' รูป...</p>';
+
+    slipBase64List = [];
+    for (const f of files) {
+        const b64 = await compressImage(f);
+        slipBase64List.push(b64);
+    }
+
+    container.innerHTML = '';
+    container.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px';
+    slipBase64List.forEach((b64, i) => {
+        const img = document.createElement('img');
+        img.src = 'data:image/jpeg;base64,' + b64;
+        img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--primary)';
+        img.title = 'รูปที่ ' + (i + 1);
+        container.appendChild(img);
+    });
+    const label = document.createElement('p');
+    label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--primary-dark);font-weight:600;margin-top:4px';
+    label.textContent = '📷 ' + slipBase64List.length + ' รูป';
+    container.appendChild(label);
+}
 
 async function handleSubmitPayment(event) {
     event.preventDefault(); const btn = document.getElementById('btn-do-submit');
@@ -349,7 +374,9 @@ async function handleSubmitPayment(event) {
             action: 'submitPayment', billId: currentBillId, paymentType: pt,
             senderName: document.getElementById('sender-name').value,
             amount: parseFloat(document.getElementById('pay-amount').value),
-            note: document.getElementById('pay-note').value, slipImageBase64: slipBase64 || ''
+            note: document.getElementById('pay-note').value,
+            slipImages: slipBase64List.length > 0 ? slipBase64List : (slipBase64List.length === 0 ? [] : []),
+            slipImageBase64: slipBase64List[0] || ''
         };
         if (pt === 'เช็ค') payload.chequeData = {
             bank: document.getElementById('cheque-bank').value,
@@ -363,7 +390,14 @@ async function handleSubmitPayment(event) {
         }
         else showToast(r.error, 'error');
     } catch (e) { showToast('เกิดข้อผิดพลาด', 'error'); }
-    finally { btn.disabled = false; btn.textContent = '✅ ส่งหลักฐาน'; slipBase64 = ''; }
+    finally {
+        btn.disabled = false; btn.textContent = '✅ ส่งหลักฐาน';
+        slipBase64List = [];
+        const container = document.getElementById('slip-preview-container');
+        if (container) container.innerHTML = '';
+        document.querySelector('.upload-icon').style.display = '';
+        document.querySelector('.upload-area p').style.display = '';
+    }
 }
 
 // ===== Admin =====

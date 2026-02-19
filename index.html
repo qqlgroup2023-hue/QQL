@@ -179,14 +179,14 @@
                 </div>
 
                 <div class="form-group">
-                    <label>📷 แนบรูปสลิป / หลักฐาน</label>
+                    <label>📷 แนบรูปสลิป / หลักฐาน (เลือกได้หลายรูป)</label>
                     <div class="upload-area" id="upload-area" onclick="document.getElementById('slip-file').click()">
                         <div class="upload-icon">📸</div>
-                        <p>แตะเพื่อเลือกรูป</p>
-                        <img id="slip-preview" class="slip-preview" style="display:none">
+                        <p>แตะเพื่อเลือกรูป (เลือกได้หลายรูป)</p>
+                        <div id="slip-preview-container"></div>
                     </div>
-                    <input type="file" id="slip-file" accept="image/*" style="display:none"
-                        onchange="previewSlip(this)">
+                    <input type="file" id="slip-file" accept="image/*" multiple style="display:none"
+                        onchange="previewSlips(this)">
                 </div>
 
                 <div class="form-group">
