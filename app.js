@@ -294,8 +294,15 @@ function showPaymentForm() {
 }
 function closePaymentForm() {
     document.getElementById('payment-modal').style.display = 'none';
-    document.getElementById('payment-form').reset(); document.getElementById('slip-preview').style.display = 'none';
+    document.getElementById('payment-form').reset();
+    const container = document.getElementById('slip-preview-container');
+    if (container) container.innerHTML = '';
+    const icon = document.querySelector('.upload-icon');
+    if (icon) icon.style.display = '';
+    const txt = document.querySelector('.upload-area p');
+    if (txt) txt.style.display = '';
     document.getElementById('sender-suggestions').style.display = 'none';
+    slipBase64List = [];
 }
 
 async function loadSenderSugg(customer) {
@@ -389,7 +396,7 @@ async function handleSubmitPayment(event) {
             showBillDetail(currentBillId);
         }
         else showToast(r.error, 'error');
-    } catch (e) { showToast('เกิดข้อผิดพลาด', 'error'); }
+    } catch (e) { showToast('เกิดข้อผิดพลาด: ' + (e.message || e), 'error'); console.error('submitPayment error:', e); }
     finally {
         btn.disabled = false; btn.textContent = '✅ ส่งหลักฐาน';
         slipBase64List = [];
