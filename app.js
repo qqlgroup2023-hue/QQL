@@ -174,8 +174,91 @@ async function showBillDetail(billId, book) {
         renderPayHist(r.payments);
         document.getElementById('btn-submit-payment').style.display = st.includes('ชำระแล้ว') ? 'none' : 'block';
         renderAdminPanel(r.payments);
+        // ปุ่มดูรูปบิล
+        renderBillImageBtn(billId);
     } catch (e) { showToast('โหลดไม่ได้', 'error'); }
 }
+
+// ===== Bill Image Viewer =====
+function renderBillImageBtn(billId) {
+    let btnContainer = document.getElementById('bill-image-btn-container');
+    if (!btnContainer) {
+        btnContainer = document.createElement('div');
+        btnContainer.id = 'bill-image-btn-container';
+        btnContainer.style.cssText = 'text-align:center;margin:12px 0';
+        const detailView = document.getElementById('bill-detail-view');
+        const submitBtn = document.getElementById('btn-submit-payment');
+        detailView.insertBefore(btnContainer, submitBtn);
+    }
+    btnContainer.innerHTML = `
+        <button onclick="loadBillImages('${billId}')" 
+          style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:12px;padding:12px 24px;font-size:15px;cursor:pointer;box-shadow:0 4px 15px rgba(102,126,234,0.4);width:100%">
+          📄 ดูใบส่งสินค้า
+        </button>
+    `;
+}
+
+async function loadBillImages(billId) {
+    showToast('กำลังโหลดรูปบิล...', 'success');
+    try {
+        const r = await apiGet('getBillImages', { billId });
+        if (!r.success || !r.images || r.images.length === 0) {
+            showToast('ไม่พบรูปบิล — ตรวจสอบชื่อไฟล์ใน Google Drive ว่าเริ่มด้วย ' + billId, 'error');
+            return;
+        }
+        showImageViewer(r.images, billId);
+    } catch (e) { showToast('โหลดรูปบิลไม่ได้', 'error'); }
+}
+
+function showImageViewer(images, billId) {
+    let currentIdx = 0;
+    const overlay = document.createElement('div');
+    overlay.id = 'image-viewer-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;';
+
+    function render() {
+        const img = images[currentIdx];
+        overlay.innerHTML = `
+            <div style="position:absolute;top:12px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:center;z-index:10001">
+                <div style="color:#fff;font-size:14px;font-weight:bold">📄 ${billId} — หน้า ${currentIdx + 1}/${images.length}</div>
+                <button onclick="document.getElementById('image-viewer-overlay').remove()" 
+                    style="background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:50%;width:36px;height:36px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>
+            </div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:60px 10px 80px;overflow:auto">
+                <img src="${img.url}" onerror="this.src='${img.downloadUrl}'" 
+                    style="max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;box-shadow:0 0 30px rgba(0,0,0,0.5)" />
+            </div>
+            <div style="position:absolute;bottom:20px;display:flex;gap:16px;z-index:10001">
+                ${images.length > 1 ? `
+                    <button id="img-prev-btn" style="background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:50%;width:48px;height:48px;font-size:22px;cursor:pointer">◀</button>
+                    <div style="color:#fff;font-size:16px;display:flex;align-items:center;gap:4px">
+                        ${images.map((_, i) => `<span style="width:8px;height:8px;border-radius:50%;background:${i === currentIdx ? '#00B900' : 'rgba(255,255,255,0.3)'}"></span>`).join('')}
+                    </div>
+                    <button id="img-next-btn" style="background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:50%;width:48px;height:48px;font-size:22px;cursor:pointer">▶</button>
+                ` : ''}
+            </div>
+        `;
+        if (images.length > 1) {
+            overlay.querySelector('#img-prev-btn').onclick = () => { currentIdx = (currentIdx - 1 + images.length) % images.length; render(); };
+            overlay.querySelector('#img-next-btn').onclick = () => { currentIdx = (currentIdx + 1) % images.length; render(); };
+        }
+    }
+
+    render();
+    // Swipe support สำหรับมือถือ
+    let startX = 0;
+    overlay.addEventListener('touchstart', e => { startX = e.touches[0].clientX; });
+    overlay.addEventListener('touchend', e => {
+        const diff = e.changedTouches[0].clientX - startX;
+        if (Math.abs(diff) > 50 && images.length > 1) {
+            if (diff < 0) currentIdx = (currentIdx + 1) % images.length;
+            else currentIdx = (currentIdx - 1 + images.length) % images.length;
+            render();
+        }
+    });
+    document.body.appendChild(overlay);
+}
+
 
 function renderPayHist(payments) {
     const c = document.getElementById('payment-history');
