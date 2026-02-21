@@ -374,18 +374,24 @@ async function previewSlips(input) {
     }
 
     container.innerHTML = '';
-    container.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px';
-    slipBase64List.forEach((b64, i) => {
+    container.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px;align-items:center';
+
+    // โชว์แค่รูปแรกรูปเดียว
+    if (slipBase64List.length > 0) {
         const img = document.createElement('img');
-        img.src = 'data:image/jpeg;base64,' + b64;
+        img.src = 'data:image/jpeg;base64,' + slipBase64List[0];
         img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;border:2px solid var(--primary)';
-        img.title = 'รูปที่ ' + (i + 1);
+        img.title = 'รูปที่ 1';
         container.appendChild(img);
-    });
-    const label = document.createElement('p');
-    label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--primary-dark);font-weight:600;margin-top:4px';
-    label.textContent = '📷 ' + slipBase64List.length + ' รูป';
-    container.appendChild(label);
+
+        // ถ้ามีหลายรูปให้ขึ้น +2 รูป
+        if (slipBase64List.length > 1) {
+            const label = document.createElement('div');
+            label.style.cssText = 'display:flex;align-items:center;justify-content:center;width:80px;height:80px;background:var(--primary-light);color:var(--primary-dark);border-radius:8px;font-weight:bold;font-size:16px;border:2px dashed var(--primary);';
+            label.textContent = '+' + (slipBase64List.length - 1);
+            container.appendChild(label);
+        }
+    }
 }
 
 async function handleSubmitPayment(event) {
@@ -411,7 +417,8 @@ async function handleSubmitPayment(event) {
                 btn.textContent = '⏳ อัปโหลดรูปเพิ่ม...';
                 for (let i = 1; i < slipBase64List.length; i++) {
                     btn.textContent = '⏳ อัปโหลดรูป ' + (i + 1) + '/' + slipBase64List.length;
-                    await apiPost({ action: 'addSlipImage', paymentId: r.paymentId, billId: currentBillId, slipImageBase64: slipBase64List[i] });
+                    const customerName = currentBillData ? currentBillData.Customer : '';
+                    await apiPost({ action: 'addSlipImage', paymentId: r.paymentId, billId: currentBillId, slipImageBase64: slipBase64List[i], customer: customerName });
                 }
             }
             closePaymentForm(); showToast(r.message, r.warning ? 'warning' : 'success');
