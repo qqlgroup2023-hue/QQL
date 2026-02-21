@@ -12,6 +12,9 @@
     <link rel="dns-prefetch" href="https://static.line-scdn.net">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap"
         rel="stylesheet">
+    <!-- Libraries for Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -23,10 +26,28 @@
         <p>กำลังโหลด...</p>
     </div>
 
+    <!-- ===== Sidebar Menu ===== -->
+    <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <nav id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h3>เมนูการใช้งาน</h3>
+            <button class="close-btn" onclick="toggleSidebar()">✖</button>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="active" onclick="switchView('bill-list-view'); toggleSidebar()">
+                <span>🧾 ชำระเงิน</span>
+            </li>
+            <li onclick="switchView('dashboard-view'); toggleSidebar()">
+                <span>📊 ยอดค้างชำระรวม</span>
+            </li>
+        </ul>
+    </nav>
+
     <!-- ===== Header ===== -->
     <header class="header">
         <div class="header-content">
-            <h1 id="header-title">🧾 รายการบิล</h1>
+            <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+            <h1 id="header-title">รายการบิล</h1>
             <div id="user-info" class="user-info">
                 <span id="user-name"></span>
                 <span id="user-role" class="badge"></span>
@@ -38,6 +59,12 @@
     <main id="bill-list-view" class="view">
         <!-- Book Tabs (NOVAT / VAT) -->
         <div id="book-tabs" class="book-tabs" style="display:none"></div>
+
+        <!-- Search Box -->
+        <div class="search-container">
+            <input type="text" id="search-bill" placeholder="🔍 ค้นหาด้วย เลขที่บิล, ชื่อร้าน..."
+                oninput="handleSearch()">
+        </div>
 
         <!-- Filter Tabs -->
         <div class="filter-tabs">
@@ -56,9 +83,33 @@
             <div class="empty-icon">📋</div>
             <p>ไม่มีบิลในหมวดนี้</p>
         </div>
+
+        <!-- Floating Multi-Payment Bar -->
+        <div id="multi-pay-bar" class="multi-pay-bar" style="display:none">
+            <div class="multi-pay-info">
+                <span id="multi-pay-count">เลือก 0 บิล</span>
+                <span id="multi-pay-total">ยอดรวม: ฿0.00</span>
+            </div>
+            <button class="btn btn-primary" onclick="showMultiPaymentForm()">แนบหลักฐานชำระ</button>
+        </div>
     </main>
 
-    <!-- ===== Bill Detail View ===== -->
+    <!-- ===== Dashboard View (Outstanding Balances) ===== -->
+    <main id="dashboard-view" class="view" style="display:none">
+        <div class="dashboard-header-tools">
+            <h2 style="font-size: 18px; margin: 0; color: var(--text);">ยอดค้างชำระทั้งหมด</h2>
+            <div class="export-tools">
+                <button class="btn btn-outline" onclick="exportDashboard('png')">💾 PNG</button>
+                <button class="btn btn-primary" onclick="exportDashboard('pdf')">📄 PDF</button>
+            </div>
+        </div>
+
+        <div id="dashboard-loading" class="text-center" style="padding: 20px;">⏳ กำลังโหลดยอดค้างชำระ...</div>
+
+        <div id="dashboard-content" class="dashboard-content">
+            <!-- Summary table injected by JS -->
+        </div>
+    </main> <!-- ===== Bill Detail View ===== -->
     <div id="bill-detail-view" class="view" style="display:none">
         <button class="back-btn" onclick="showBillList()">← กลับ</button>
 

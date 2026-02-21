@@ -6,6 +6,58 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycby8qQzYDIcIfq9wWtX6Dgp7
 
 let currentUser = null, allBills = [], currentBillId = null, currentBillData = null;
 let isAdmin = false, currentFilter = 'all', currentBook = '', availableBooks = [];
+let searchQuery = '';
+let selectedBills = []; // Array of { id, amount, customer }
+
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('active');
+    document.getElementById('sidebar-overlay').classList.toggle('active');
+}
+
+function switchView(viewId) {
+    document.querySelectorAll('main.view, div.view').forEach(v => v.style.display = 'none');
+    document.getElementById(viewId).style.display = 'block';
+    if (event && event.currentTarget) {
+        document.querySelectorAll('.sidebar-menu li').forEach(li => li.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+    }
+    if (viewId === 'dashboard-view') renderDashboard();
+}
+
+function handleSearch() {
+    searchQuery = document.getElementById('search-bill').value.trim().toLowerCase();
+    renderBills();
+}
+
+function toggleBillSelection(billId, amount, customer, event) {
+    event.stopPropagation();
+    const checked = event.target.checked;
+
+    if (checked && selectedBills.length > 0 && selectedBills[0].customer !== customer) {
+        showToast('กรุณาเลือกบิลของลูกค้าเดียวกันเท่านั้น', 'warning');
+        event.target.checked = false;
+        return;
+    }
+
+    if (checked) selectedBills.push({ id: billId, amount, customer });
+    else selectedBills = selectedBills.filter(b => b.id !== billId);
+
+    updateMultiPayBar();
+}
+
+function updateMultiPayBar() {
+    const bar = document.getElementById('multi-pay-bar');
+    if (!bar) return;
+    if (selectedBills.length > 0) {
+        bar.style.display = 'flex';
+        document.getElementById('multi-pay-count').textContent = `เลือก ${selectedBills.length} บิล`;
+        const total = selectedBills.reduce((sum, b) => sum + b.amount, 0);
+        document.getElementById('multi-pay-total').textContent = `ยอดรวม: ฿${fmt(total)}`;
+    } else {
+        bar.style.display = 'none';
+    }
+}
+
 
 document.addEventListener('DOMContentLoaded', initApp);
 
@@ -124,11 +176,16 @@ function renderBills() {
     c.innerHTML = '';
     const filtered = allBills.filter(b => {
         const s = (b.Status || '').toString();
-        if (currentFilter === 'all') return true;
-        if (currentFilter === 'pending') return s.includes('รอ');
-        if (currentFilter === 'paid') return s.includes('ชำระแล้ว');
-        if (currentFilter === 'rejected') return s.includes('ไม่ผ่าน') || s.includes('คืน');
-        return true;
+        let matchFilter = true;
+        if (currentFilter === 'pending') matchFilter = s.includes('รอ');
+        else if (currentFilter === 'paid') matchFilter = s.includes('ชำระแล้ว');
+        else if (currentFilter === 'rejected') matchFilter = s.includes('ไม่ผ่าน') || s.includes('คืน');
+
+        let matchSearch = true;
+        if (searchQuery) {
+            matchSearch = b.Bill_ID.toLowerCase().includes(searchQuery) || (b.Customer && b.Customer.toLowerCase().includes(searchQuery));
+        }
+        return matchFilter && matchSearch;
     });
     if (!filtered.length) { empty.style.display = 'block'; return; }
     empty.style.display = 'none';
@@ -136,11 +193,16 @@ function renderBills() {
         const s = (bill.Status || '').toString();
         const sc = s.includes('ชำระแล้ว') ? 'status-paid' : s.includes('ไม่ผ่าน') || s.includes('คืน') ? 'status-rejected' : 'status-pending';
         const cc = s.includes('ชำระแล้ว') ? 'paid' : s.includes('ไม่ผ่าน') ? 'rejected' : 'pending';
+        const isPending = sc === 'status-pending' || sc === 'status-rejected';
         const dt = bill.Created_Date ? new Date(bill.Created_Date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+
+        const isChecked = selectedBills.some(b => b.id === bill.Bill_ID);
+        const checkboxHTML = isPending ? `<div class="bill-check-wrapper" onclick="event.stopPropagation()"><input type="checkbox" class="bill-checkbox" value="${bill.Bill_ID}" onchange="toggleBillSelection('${bill.Bill_ID}', ${bill.Total_Amount}, '${bill.Customer}', event)" ${isChecked ? 'checked' : ''}></div>` : '';
+
         const d = document.createElement('div');
         d.className = 'bill-card ' + cc;
         d.onclick = () => showBillDetail(bill.Bill_ID, bill._book || currentBook);
-        d.innerHTML = `<div class="bill-card-top"><span class="bill-id">${bill.Bill_ID}</span><span class="status-badge ${sc}">${bill.Status}</span></div>
+        d.innerHTML = `<div class="bill-header">${checkboxHTML}<div class="bill-title-status"><span class="bill-id">${bill.Bill_ID}</span><span class="status-badge ${sc}">${bill.Status}</span></div></div>
       <div class="bill-card-body"><div><div class="bill-customer">🏪 ${bill.Customer}</div><div class="bill-date">${dt}</div></div>
       <div class="bill-amount">฿${fmt(bill.Total_Amount)}</div></div>`;
         c.appendChild(d);
@@ -394,6 +456,15 @@ async function previewSlips(input) {
     }
 }
 
+function showMultiPaymentForm() {
+    if (selectedBills.length === 0) return;
+    const totalAmount = selectedBills.reduce((sum, b) => sum + b.amount, 0);
+    const customer = selectedBills[0].customer;
+    currentBillId = selectedBills.map(b => b.id); // ตั้งเป็น Array
+    currentBillData = { Customer: customer, Total_Amount: totalAmount };
+    showPaymentForm();
+}
+
 async function handleSubmitPayment(event) {
     event.preventDefault(); const btn = document.getElementById('btn-do-submit');
     btn.disabled = true; btn.textContent = '⏳ กำลังส่ง...';
@@ -406,6 +477,16 @@ async function handleSubmitPayment(event) {
             note: document.getElementById('pay-note').value,
             slipImageBase64: slipBase64List[0] || ''
         };
+
+        // Confirm partial payment
+        const expectedTotal = currentBillData ? currentBillData.Total_Amount : 0;
+        if (payload.amount < expectedTotal) {
+            if (!confirm(`⚠️ ยอดโอน (฿${fmt(payload.amount)}) น้อยกว่ายอดบิลรวม (฿${fmt(expectedTotal)})\nระบบจะทยอยตัดบิลตามลำดับ\n\nยืนยันการทำรายการหรือไม่?`)) {
+                btn.disabled = false; btn.textContent = '✅ ส่งหลักฐาน';
+                return;
+            }
+        }
+
         if (pt === 'เช็ค') payload.chequeData = {
             bank: document.getElementById('cheque-bank').value,
             chequeNo: document.getElementById('cheque-no').value, chequeDate: document.getElementById('cheque-date').value, amount: payload.amount
@@ -422,8 +503,18 @@ async function handleSubmitPayment(event) {
                 }
             }
             closePaymentForm(); showToast(r.message, r.warning ? 'warning' : 'success');
-            if (liff.isInClient()) liff.sendMessages([{ type: 'text', text: '✅ ส่งสลิป บิล:' + currentBillId + ' ฿' + fmt(payload.amount) }]).catch(() => { });
-            showBillDetail(currentBillId);
+
+            const displayId = Array.isArray(currentBillId) ? currentBillId.join(', ') : currentBillId;
+            if (liff.isInClient()) liff.sendMessages([{ type: 'text', text: '✅ ส่งสลิป บิล: ' + displayId + ' ฿' + fmt(payload.amount) }]).catch(() => { });
+
+            // รีเซ็ตการเลือกและกลับหน้าแรก
+            selectedBills = [];
+            updateMultiPayBar();
+            loadBills();
+            switchView('bill-list-view');
+            // If single bill, wait we don't need to show detail anymore, better to show list since it might be multi-bill
+            // But we can show it if it's a single one
+            // if (!Array.isArray(currentBillId)) showBillDetail(currentBillId);
         }
         else showToast(r.error, 'error');
     } catch (e) { showToast('เกิดข้อผิดพลาด: ' + (e.message || e), 'error'); console.error('submitPayment error:', e); }
@@ -456,3 +547,76 @@ function showToast(msg, type = 'success') {
     t.className = 'toast ' + type; m.textContent = msg; t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 4000);
 }
 function fmt(n) { return n == null ? '0' : Number(n).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
+
+// ===== Dashboard (Outstanding Balances) =====
+async function renderDashboard() {
+    const c = document.getElementById('dashboard-content');
+    const load = document.getElementById('dashboard-loading');
+    load.style.display = 'block'; c.innerHTML = '';
+
+    try {
+        const r = await apiGet('getBills', { book: currentBook });
+        if (!r.success) throw new Error('Failed to load');
+
+        const trulyUnpaid = r.bills.filter(b => {
+            const s = (b.Status || '').toString();
+            return !s.includes('ชำระแล้ว');
+        });
+
+        const byCustomer = {};
+        trulyUnpaid.forEach(b => {
+            if (!byCustomer[b.Customer]) byCustomer[b.Customer] = [];
+            byCustomer[b.Customer].push(b);
+        });
+
+        load.style.display = 'none';
+
+        if (Object.keys(byCustomer).length === 0) {
+            c.innerHTML = '<div class="text-center" style="color:var(--text-sub);padding:40px">ไม่มีบิลค้างชำระ 🎉</div>';
+            return;
+        }
+
+        let html = '';
+        for (const [customer, bills] of Object.entries(byCustomer)) {
+            const sum = bills.reduce((acc, b) => acc + (parseFloat(b.Total_Amount) || 0), 0);
+            html += `<div class="dashboard-card"><div class="dash-shop-name"><span>🏪 ${customer}</span><span class="dash-shop-total">฿${fmt(sum)} (${bills.length} บิล)</span></div><div>`;
+            bills.forEach(b => {
+                const dt = b.Created_Date ? new Date(b.Created_Date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : '';
+                html += `<div class="dash-bill-item"><span>${b.Bill_ID} <small>(${dt})</small></span><span>฿${fmt(b.Total_Amount)}</span></div>`;
+            });
+            html += `</div></div>`;
+        }
+        c.innerHTML = html;
+    } catch (e) {
+        load.style.display = 'none';
+        c.innerHTML = '<div class="text-center" style="color:var(--danger)">ดึงข้อมูลล้มเหลว</div>';
+    }
+}
+
+async function exportDashboard(format) {
+    const el = document.getElementById('dashboard-content');
+    if (!el || el.innerHTML.trim() === '' || el.innerHTML.includes('ไม่มีบิลค้างชำระ')) return showToast('ไม่มีข้อมูลให้ส่งออก', 'warning');
+
+    showToast('กำลังเตรียมไฟล์ ' + format.toUpperCase() + '...', 'success');
+
+    try {
+        const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#f0f2f5' });
+        if (format === 'png') {
+            const link = document.createElement('a');
+            link.download = `ยอดค้างชำระ_${new Date().getTime()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } else if (format === 'pdf') {
+            const imgData = canvas.toDataURL('image/jpeg', 1.0);
+            const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`ยอดค้างชำระ_${new Date().getTime()}.pdf`);
+        }
+        showToast('บันทึกสำเร็จ', 'success');
+    } catch (e) {
+        console.error(e);
+        showToast('เกิดข้อผิดพลาดในการสร้างไฟล์', 'error');
+    }
+}
