@@ -289,10 +289,11 @@ function showBillList() {
 }
 
 // ===== Payment Form =====
+// ===== Payment Form =====
 function showPaymentForm() {
     document.getElementById('payment-modal').style.display = 'flex';
     document.getElementById('pay-amount').value = currentBillData ? currentBillData.Total_Amount : '';
-    document.getElementById('sender-name').value = currentBillData ? currentBillData.Customer : '';
+    document.getElementById('sender-name').value = ''; // เคลียร์ช่องพิมพ์
     if (currentBillData?.Customer) loadSenderSugg(currentBillData.Customer);
     document.querySelectorAll('input[name="paymentType"]').forEach(r => r.addEventListener('change', () => {
         document.getElementById('cheque-fields').style.display = r.value === 'เช็ค' ? 'block' : 'none';
@@ -314,13 +315,23 @@ async function loadSenderSugg(customer) {
     try {
         const r = await apiGet('getShopSenders', { customer });
         const datalist = document.getElementById('sender-list');
-        if (datalist) datalist.innerHTML = ''; // เคลียร์ของเก่า
-        if (r.success && r.senders.length) {
-            r.senders.forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = s.name;
-                if (datalist) datalist.appendChild(opt);
-            });
+        if (datalist) {
+            datalist.innerHTML = ''; // เคลียร์ของเก่า
+            // ใส่ชื่อร้านเป็นตัวเลือกแรกเสมอ
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = customer;
+            datalist.appendChild(defaultOpt);
+
+            if (r.success && r.senders.length) {
+                // ใส่รายชื่อผู้โอนอื่นๆ ต่อท้าย
+                r.senders.forEach(s => {
+                    if (s.name !== customer) { // ไม่ซ้ำกับชื่อร้านด้านบน
+                        const opt = document.createElement('option');
+                        opt.value = s.name;
+                        datalist.appendChild(opt);
+                    }
+                });
+            }
         }
     } catch (e) { }
 }
