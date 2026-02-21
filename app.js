@@ -307,21 +307,20 @@ function closePaymentForm() {
     if (icon) icon.style.display = '';
     const txt = document.querySelector('.upload-area p');
     if (txt) txt.style.display = '';
-    document.getElementById('sender-suggestions').style.display = 'none';
     slipBase64List = [];
 }
 
 async function loadSenderSugg(customer) {
     try {
         const r = await apiGet('getShopSenders', { customer });
+        const datalist = document.getElementById('sender-list');
+        if (datalist) datalist.innerHTML = ''; // เคลียร์ของเก่า
         if (r.success && r.senders.length) {
-            const c = document.getElementById('sender-suggestions');
-            c.innerHTML = '<div style="padding:8px 14px;font-size:11px;color:var(--text-sub);font-weight:600">ผู้โอนที่เคยใช้:</div>';
             r.senders.forEach(s => {
-                const d = document.createElement('div'); d.className = 'suggestion-item'; d.textContent = s.name;
-                d.onclick = () => { document.getElementById('sender-name').value = s.name; c.style.display = 'none'; }; c.appendChild(d);
+                const opt = document.createElement('option');
+                opt.value = s.name;
+                if (datalist) datalist.appendChild(opt);
             });
-            c.style.display = 'block';
         }
     } catch (e) { }
 }
