@@ -292,6 +292,7 @@ function showBillList() {
 function showPaymentForm() {
     document.getElementById('payment-modal').style.display = 'flex';
     document.getElementById('pay-amount').value = currentBillData ? currentBillData.Total_Amount : '';
+    document.getElementById('sender-name').value = currentBillData ? currentBillData.Customer : '';
     if (currentBillData?.Customer) loadSenderSugg(currentBillData.Customer);
     document.querySelectorAll('input[name="paymentType"]').forEach(r => r.addEventListener('change', () => {
         document.getElementById('cheque-fields').style.display = r.value === 'เช็ค' ? 'block' : 'none';
