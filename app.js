@@ -14,24 +14,27 @@ function toggleSidebar() {
     document.getElementById('sidebar-overlay').classList.toggle('active');
 }
 
-function switchView(viewId) {
+function switchView(viewId, element) {
     document.querySelectorAll('main.view, div.view').forEach(v => v.style.display = 'none');
     document.getElementById(viewId).style.display = 'block';
-    if (event && event.currentTarget) {
+    if (element) {
         document.querySelectorAll('.sidebar-menu li').forEach(li => li.classList.remove('active'));
-        event.currentTarget.classList.add('active');
+        element.classList.add('active');
     }
     if (viewId === 'dashboard-view') renderDashboard();
 }
 
+let searchTimeout = null;
 function handleSearch() {
-    searchQuery = document.getElementById('search-bill').value.trim().toLowerCase();
-    renderBills();
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        searchQuery = document.getElementById('search-bill').value.trim().toLowerCase();
+        renderBills();
+    }, 300);
 }
 
-function toggleBillSelection(billId, amount, customer, event) {
-    event.stopPropagation();
-    const checked = event.target.checked;
+function toggleBillSelection(billId, amount, customer, element) {
+    const checked = element.checked;
 
     if (checked && selectedBills.length > 0 && selectedBills[0].customer !== customer) {
         showToast('กรุณาเลือกบิลของลูกค้าเดียวกันเท่านั้น', 'warning');
@@ -197,7 +200,7 @@ function renderBills() {
         const dt = bill.Created_Date ? new Date(bill.Created_Date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 
         const isChecked = selectedBills.some(b => b.id === bill.Bill_ID);
-        const checkboxHTML = isPending ? `<div class="bill-check-wrapper" onclick="event.stopPropagation()"><input type="checkbox" class="bill-checkbox" value="${bill.Bill_ID}" onchange="toggleBillSelection('${bill.Bill_ID}', ${bill.Total_Amount}, '${bill.Customer}', event)" ${isChecked ? 'checked' : ''}></div>` : '';
+        const checkboxHTML = isPending ? `<div class="bill-check-wrapper" onclick="event.stopPropagation()"><input type="checkbox" class="bill-checkbox" value="${bill.Bill_ID}" onclick="event.stopPropagation()" onchange="toggleBillSelection('${bill.Bill_ID}', ${bill.Total_Amount}, '${bill.Customer}', this)" ${isChecked ? 'checked' : ''}></div>` : '';
 
         const d = document.createElement('div');
         d.className = 'bill-card ' + cc;

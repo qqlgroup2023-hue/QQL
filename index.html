@@ -34,10 +34,10 @@
             <button class="close-btn" onclick="toggleSidebar()">✖</button>
         </div>
         <ul class="sidebar-menu">
-            <li class="active" onclick="switchView('bill-list-view'); toggleSidebar()">
+            <li class="active" onclick="switchView('bill-list-view', this); toggleSidebar()">
                 <span>🧾 ชำระเงิน</span>
             </li>
-            <li onclick="switchView('dashboard-view'); toggleSidebar()">
+            <li onclick="switchView('dashboard-view', this); toggleSidebar()">
                 <span>📊 ยอดค้างชำระรวม</span>
             </li>
         </ul>
